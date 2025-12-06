@@ -1,0 +1,54 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Sale {
+  id              String   @id @default(uuid())
+  date            DateTime @default(now())
+  customerName    String
+  jobDescription  String
+  quantity        Int      @default(1)
+  price           Decimal
+  amount          Decimal
+  paymentType     String   @default("Cash") // Cash, Credit
+  paymentStatus   String   @default("Pending") // Received, Pending
+  status          String   @default("Pending") // Pending, In Progress, Completed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Expense {
+  id              String   @id @default(uuid())
+  date            DateTime @default(now())
+  purpose         String
+  personnel       String
+  description     String
+  amount          Decimal
+  category        String
+  signatureUrl    String?
+  receiptUrl      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Quote {
+  id              String   @id @default(uuid())
+  date            DateTime @default(now())
+  customerName    String
+  jobDescription  String
+  items           String   // JSON array of line items: [{description, quantity, price, amount}]
+  totalAmount     Decimal
+  status          String   @default("Pending") // Pending, Accepted, Rejected, Converted
+  notes           String?
+  validUntil      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
