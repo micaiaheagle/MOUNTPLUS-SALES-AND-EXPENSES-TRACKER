@@ -33,10 +33,10 @@ export async function updateQuote(id: string, formData: FormData) {
   const date = dateStr ? new Date(dateStr) : new Date();
   const customerName = formData.get('customerName') as string;
   const jobDescription = formData.get('jobDescription') as string;
-  const quantity = parseInt(formData.get('quantity') as string);
-  const price = parseFloat(formData.get('price') as string);
+  const items = formData.get('items') as string;
+  const totalAmount = parseFloat(formData.get('totalAmount') as string);
   const status = formData.get('status') as string;
-  const amount = quantity * price;
+  const notes = formData.get('notes') as string || '';
 
   await prisma.quote.update({
     where: { id },
@@ -44,9 +44,9 @@ export async function updateQuote(id: string, formData: FormData) {
       date,
       customerName,
       jobDescription,
-      quantity,
-      price,
-      amount,
+      items,
+      totalAmount,
+      notes,
       status
     }
   });
