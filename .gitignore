@@ -64,3 +64,6 @@ wrangler.toml
 *.swp
 *.swo
 *~
+
+.vercel
+.env*.local
