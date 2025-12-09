@@ -1,6 +1,6 @@
 # ✅ Pre-Deployment Checklist
 
-Use this checklist before pushing to GitHub and deploying to Cloudflare.
+Use this checklist before pushing to GitHub and deploying.
 
 ## 🔍 Code Quality
 
@@ -22,8 +22,10 @@ Use this checklist before pushing to GitHub and deploying to Cloudflare.
 - [x] Prisma schema is correct
 - [x] All models have proper fields
 - [x] Migrations are up to date
-- [ ] Database file (.db) is NOT in git
+- [ ] Database file (.db) is NOT in git (if using SQLite locally)
 - [x] DATABASE_URL is in .env.example
+- [ ] For Vercel: Postgres database is provisioned
+
 
 ## 🔒 Security
 
@@ -81,17 +83,15 @@ Use this checklist before pushing to GitHub and deploying to Cloudflare.
 - [ ] Remote origin is set
 - [ ] Ready to push
 
-## ☁️ Cloudflare Preparation
+## ☁️ Deployment Preparation
 
 - [x] Build command is correct
 - [x] Output directory is correct
 - [ ] Environment variables documented
-- [ ] Database strategy decided
+- [ ] Database strategy decided (Postgres for Vercel)
 - [ ] Custom domain ready (optional)
 
 ## 🚀 Final Steps
-
-Before deploying:
 
 1. **Stop development server**
    ```bash
@@ -123,9 +123,9 @@ Before deploying:
    git push origin main
    ```
 
-6. **Deploy to Cloudflare**
-   - Follow DEPLOYMENT.md
-   - Configure environment variables
+6. **Deploy to Vercel**
+   - Follow VERCEL_DEPLOYMENT.md
+   - Configure environment variables (DATABASE_URL)
    - Monitor build logs
 
 ## ✨ Post-Deployment
@@ -157,12 +157,13 @@ Your deployment is successful when:
 
 If you encounter issues:
 
-1. Check build logs in Cloudflare
-2. Review DEPLOYMENT.md troubleshooting section
+1. Check build logs in Vercel
+2. Review VERCEL_DEPLOYMENT.md troubleshooting section
 3. Verify environment variables
 4. Check database connection
 5. Review Next.js deployment docs
 6. Open GitHub issue if needed
+
 
 ---
 

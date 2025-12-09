@@ -158,7 +158,7 @@ Modern business management system built with Next.js 15, featuring quotations, s
 
 ## 📋 Pre-Deployment Checklist
 
-Before deploying to Cloudflare:
+Before deploying:
 
 - [ ] All files committed to GitHub
 - [ ] README.md is complete and accurate
@@ -171,8 +171,8 @@ Before deploying to Cloudflare:
 ## 🚀 Next Steps
 
 After pushing to GitHub:
-1. Follow `DEPLOYMENT.md` for Cloudflare deployment
-2. Set up environment variables in Cloudflare
+1. Follow `DEPLOYMENT.md` for Vercel deployment
+2. Set up environment variables in Vercel
 3. Configure custom domain (optional)
 4. Test the deployed application
 
@@ -180,15 +180,13 @@ After pushing to GitHub:
 
 ### Database Considerations
 - SQLite database (`dev.db`) is NOT committed to GitHub
-- On deployment, you'll need to:
-  - Use Cloudflare D1 (SQLite on edge), OR
-  - Use external database (PostgreSQL, MySQL)
-  - Run `npx prisma db push` to create tables
+- On Vercel, you MUST use a Postgres database (see `VERCEL_DATABASE_SETUP.md`)
+- Run `npx prisma db push` to create tables after connecting
 
 ### Environment Variables
 - Never commit `.env` file
 - Always use `.env.example` as template
-- Set environment variables in Cloudflare dashboard
+- Set environment variables in Vercel dashboard
 
 ### Security
 - Review all files before committing

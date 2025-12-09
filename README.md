@@ -183,11 +183,16 @@ vercel
 
 ### Database
 
-The app uses SQLite by default. To use a different database:
+The app is configured to use **PostgreSQL** by default in `prisma/schema.prisma` for production compatibility (Vercel).
 
-1. Update `prisma/schema.prisma` datasource
-2. Set `DATABASE_URL` environment variable
-3. Run `npx prisma db push`
+For local development, you can:
+1. Use a local PostgreSQL instance.
+2. OR switch to SQLite temporarily (change `provider = "postgresql"` to `provider = "sqlite"` in `prisma/schema.prisma` and update `DATABASE_URL` to `file:./dev.db`). **Note: Do not commit SQLite configuration if deploying to Vercel.**
+
+To deploy to Vercel:
+1. Create a Postgres database (Vercel Postgres, Neon, Supabase).
+2. Set `DATABASE_URL` in Vercel Environment Variables.
+3. Run `npx prisma db push` (or let the build script handle generation, and run migrations manually or via a command).
 
 ### Customization
 

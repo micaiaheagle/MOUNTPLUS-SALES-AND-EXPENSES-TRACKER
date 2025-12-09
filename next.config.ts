@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Disable image optimization for Cloudflare Pages
+  // Image optimization settings
   images: {
     unoptimized: true,
   },
