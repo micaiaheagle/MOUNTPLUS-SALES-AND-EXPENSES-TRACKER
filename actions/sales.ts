@@ -15,17 +15,20 @@ export async function createSale(formData: FormData) {
   const amount = quantity * price;
   const date = dateStr ? new Date(dateStr) : new Date();
 
+  const items = JSON.stringify([{
+    description: jobDescription,
+    quantity,
+    price,
+    total: amount
+  }]);
+
   await prisma.sale.create({
     data: {
       date,
       customerName,
-      jobDescription,
-      quantity,
-      price,
-      amount,
-      paymentType,
-      status,
-      paymentStatus: paymentType === 'Cash' ? 'Received' : 'Pending',
+      items,
+      totalAmount: amount,
+      paymentStatus: paymentType === 'Cash' ? 'Paid' : 'Pending',
     },
   });
 
@@ -45,17 +48,21 @@ export async function updateSale(id: string, formData: FormData) {
   const amount = quantity * price;
   const date = dateStr ? new Date(dateStr) : undefined;
 
+  const items = JSON.stringify([{
+    description: jobDescription,
+    quantity,
+    price,
+    total: amount
+  }]);
+
   await prisma.sale.update({
     where: { id },
     data: {
       date,
       customerName,
-      jobDescription,
-      quantity,
-      price,
-      amount,
-      paymentType,
-      status,
+      items,
+      totalAmount: amount,
+      paymentStatus: paymentType === 'Cash' ? 'Paid' : 'Pending',
     },
   });
 

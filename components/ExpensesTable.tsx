@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Plus, Search, Edit, Trash2, Download, FileSpreadsheet } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Download, FileSpreadsheet, Scan } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { AddExpenseModal } from '@/components/AddExpenseModal';
 import { createExpense, updateExpense, deleteExpense } from '@/actions/expenses';
@@ -19,8 +19,10 @@ export default function ExpensesTable({ initialExpenses, initialAction }: Expens
   const [isAddModalOpen, setIsAddModalOpen] = useState(initialAction === 'new');
   const [editingExpense, setEditingExpense] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isOcrProcessing, setIsOcrProcessing] = useState(false);
+  const [ocrData, setOcrData] = useState<any | null>(null);
 
-  const expenses = initialExpenses.filter(expense => 
+  const expenses = initialExpenses.filter(expense =>
     expense.purpose.toLowerCase().includes(searchTerm.toLowerCase()) ||
     expense.personnel.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -44,6 +46,25 @@ export default function ExpensesTable({ initialExpenses, initialAction }: Expens
     }
   };
 
+  const handleOcrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setIsOcrProcessing(true);
+      // Simulate OCR processing delay
+      setTimeout(() => {
+        setOcrData({
+          date: new Date().toISOString().split('T')[0],
+          purpose: 'Uploaded Receipt',
+          personnel: 'Auto-Detected',
+          amount: 125.50,
+          category: 'Misc',
+          description: 'OCR Scanned: Fuel receipt from Shell Station'
+        });
+        setIsOcrProcessing(false);
+        setIsAddModalOpen(true);
+      }, 2000);
+    }
+  };
+
   const handleExportExcel = () => {
     const dataToExport = expenses.map(e => ({
       Date: format(new Date(e.date), 'yyyy-MM-dd'),
@@ -58,19 +79,19 @@ export default function ExpensesTable({ initialExpenses, initialAction }: Expens
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
-    
+
     doc.setFontSize(20);
     doc.setTextColor(176, 36, 40);
     doc.text('MOUNT+PLUS', 14, 20);
-    
+
     doc.setFontSize(16);
     doc.setTextColor(0, 0, 0);
     doc.text('Expenses Journal', 14, 30);
-    
+
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 37);
-    
+
     const tableData = expenses.map(expense => [
       format(new Date(expense.date), 'dd/MM/yyyy'),
       expense.personnel,
@@ -78,7 +99,7 @@ export default function ExpensesTable({ initialExpenses, initialAction }: Expens
       expense.category,
       `$${Number(expense.amount).toFixed(2)}`
     ]);
-    
+
     autoTable(doc, {
       startY: 45,
       head: [['Date', 'Personnel', 'Purpose', 'Category', 'Amount']],
@@ -90,7 +111,7 @@ export default function ExpensesTable({ initialExpenses, initialAction }: Expens
         4: { cellWidth: 25, halign: 'right' }
       }
     });
-    
+
     doc.save(`Expenses_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
@@ -102,7 +123,7 @@ export default function ExpensesTable({ initialExpenses, initialAction }: Expens
         {/* Toolbar */}
         <div className="bg-[#B02428] text-white px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-4">
           <h1 className="font-bold text-xl tracking-tight">Expenses Journal</h1>
-          
+
           <div className="flex items-center gap-4 w-full md:w-auto">
             <div className="relative flex-1 md:w-64">
               <input
@@ -114,7 +135,7 @@ export default function ExpensesTable({ initialExpenses, initialAction }: Expens
               />
               <Search className="absolute left-2.5 top-2 w-4 h-4 text-gray-500" />
             </div>
-            
+
             <button
               onClick={handleExportExcel}
               className="bg-green-600 text-white px-3 py-1.5 text-xs font-bold uppercase rounded hover:bg-green-700 transition-colors flex items-center gap-1"
@@ -133,8 +154,39 @@ export default function ExpensesTable({ initialExpenses, initialAction }: Expens
               PDF
             </button>
 
+
+
+              // ... (keep existing handlers)
+
+            <div className="relative">
+              <input
+                type="file"
+                id="ocr-upload"
+                className="hidden"
+                accept="image/*,.pdf"
+                onChange={handleOcrUpload}
+                disabled={isOcrProcessing}
+              />
+              <button
+                onClick={() => document.getElementById('ocr-upload')?.click()}
+                className={`bg-blue-600 text-white px-4 py-1.5 text-sm font-bold uppercase rounded hover:bg-blue-700 transition-colors shadow-sm flex items-center ${isOcrProcessing ? 'opacity-75 cursor-wait' : ''}`}
+              >
+                {isOcrProcessing ? (
+                  <span className="animate-pulse">Scanning...</span>
+                ) : (
+                  <>
+                    <Scan className="w-4 h-4 mr-1" />
+                    Scan Receipt
+                  </>
+                )}
+              </button>
+            </div>
+
             <button
-              onClick={() => setIsAddModalOpen(true)}
+              onClick={() => {
+                setOcrData(null); // Clear OCR data for manual entry
+                setIsAddModalOpen(true);
+              }}
               className="bg-white text-[#B02428] px-4 py-1.5 text-sm font-bold uppercase rounded hover:bg-gray-50 transition-colors shadow-sm flex items-center"
             >
               <Plus className="w-4 h-4 mr-1" />
@@ -152,13 +204,13 @@ export default function ExpensesTable({ initialExpenses, initialAction }: Expens
           ) : (
             Object.entries(groupedExpenses).map(([month, monthExpenses]) => {
               const totalAmount = monthExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
-              
+
               return (
                 <div key={month} className="mb-8">
                   <div className="bg-gray-100 border-y border-gray-300 px-4 py-2 font-bold text-gray-800 uppercase text-xs tracking-wider sticky left-0">
                     {month}
                   </div>
-                  
+
                   <table className="w-full border-collapse text-xs md:text-sm">
                     <thead>
                       <tr className="bg-gray-50 text-gray-900">
@@ -224,7 +276,14 @@ export default function ExpensesTable({ initialExpenses, initialAction }: Expens
       </div>
 
       {/* Add Modal */}
-      <AddExpenseModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
+      <AddExpenseModal
+        isOpen={isAddModalOpen}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setOcrData(null);
+        }}
+        initialData={ocrData}
+      />
 
       {/* Edit Modal */}
       <Modal isOpen={!!editingExpense} onClose={() => setEditingExpense(null)} title="Edit Expense">

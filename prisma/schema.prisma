@@ -6,49 +6,294 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
+}
+
+// =======================
+// FINANCE MODULE
+// =======================
+
+model Account {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  type        String   // Asset, Liability, Equity, Revenue, Expense
+  currency    String   @default("USD")
+  balance     Decimal  @default(0)
+  transactions LedgerEntry[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LedgerEntry {
+  id          String   @id @default(uuid())
+  date        DateTime @default(now())
+  description String
+  amount      Decimal
+  currency    String   @default("USD")
+  accountId   String
+  account     Account  @relation(fields: [accountId], references: [id])
+  referenceId String?  // ID of Sale, Expense, Payment, etc.
+  createdAt   DateTime @default(now())
+}
+
+model BankAccount {
+  id            String   @id @default(uuid())
+  name          String
+  type          String   // Savings, Checking, Cash
+  accountNumber String?
+  currency      String   @default("USD")
+  balance       Decimal  @default(0)
+  transactions  Transaction[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Transaction {
+  id            String   @id @default(uuid())
+  date          DateTime @default(now())
+  type          String   // INCOME, EXPENSE
+  amount        Decimal
+  currency      String   @default("USD")
+  description   String
+  category      String?
+  bankAccountId String?
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id])
+  referenceId   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Expense {
+  id              String   @id @default(uuid())
+  date            DateTime @default(now())
+  description     String
+  amount          Decimal
+  currency        String   @default("USD")
+  category        String
+  personnel       String?
+  receiptUrl      String?
+  status          String   @default("Pending") // Pending, Approved, Paid
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  invoiceNumber String   @unique
+  date          DateTime @default(now())
+  dueDate       DateTime
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id])
+  items         String   // JSON array: [{productId, description, qty, price, amount}]
+  totalAmount   Decimal
+  currency      String   @default("USD")
+  status        String   @default("Unpaid") // Unpaid, Paid, Partial, Overdue
+  payments      Payment[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  date        DateTime @default(now())
+  amount      Decimal
+  currency    String   @default("USD")
+  method      String   // Cash, Transfer, Check
+  reference   String?
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// =======================
+// SUPPLY CHAIN MODULE
+// =======================
+
+model Product {
+  id          String   @id @default(uuid())
+  sku         String   @unique
+  name        String
+  description String?
+  unitPrice   Decimal
+  costPrice   Decimal
+  quantity    Int      @default(0)
+  reorderPoint Int     @default(10)
+  category    String?
+  movements   StockMovement[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Warehouse {
+  id        String   @id @default(uuid())
+  name      String
+  location  String?
+  movements StockMovement[]
+  createdAt DateTime @default(now())
+}
+
+model StockMovement {
+  id          String   @id @default(uuid())
+  date        DateTime @default(now())
+  type        String   // IN, OUT, ADJUSTMENT
+  quantity    Int
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  referenceId String?  // Order ID, etc.
+  createdAt   DateTime @default(now())
+}
+
+model Supplier {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  purchaseOrders PurchaseOrder[]
+  createdAt DateTime @default(now())
+}
+
+model PurchaseOrder {
+  id          String   @id @default(uuid())
+  poNumber    String   @unique
+  date        DateTime @default(now())
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  status      String   // Draft, Sent, Received
+  totalAmount Decimal
+  currency    String   @default("USD")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// =======================
+// SALES & CRM MODULE
+// =======================
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  type      String   @default("Individual") // Individual, Company
+  invoices  Invoice[]
+  quotes    Quote[]
+  leads     Lead[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Lead {
+  id          String   @id @default(uuid())
+  source      String?
+  status      String   @default("New") // New, Contacted, Qualified, Lost
+  notes       String?
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Quote {
+  id              String   @id @default(uuid())
+  quoteNumber     String   @unique
+  date            DateTime @default(now())
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id])
+  customerName    String?  // Fallback if no ID
+  items           String   // JSON
+  totalAmount     Decimal
+  currency        String   @default("USD")
+  status          String   @default("Pending") // Pending, Accepted, Rejected
+  validUntil      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model Sale {
   id              String   @id @default(uuid())
   date            DateTime @default(now())
   customerName    String
-  jobDescription  String
-  quantity        Int      @default(1)
-  price           Decimal
-  amount          Decimal
-  paymentType     String   @default("Cash") // Cash, Credit
-  paymentStatus   String   @default("Pending") // Received, Pending
-  status          String   @default("Pending") // Pending, In Progress, Completed
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-model Expense {
-  id              String   @id @default(uuid())
-  date            DateTime @default(now())
-  purpose         String
-  personnel       String
-  description     String
-  amount          Decimal
-  category        String
-  signatureUrl    String?
-  receiptUrl      String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-model Quote {
-  id              String   @id @default(uuid())
-  date            DateTime @default(now())
-  customerName    String
-  jobDescription  String
-  items           String   // JSON array of line items: [{description, quantity, price, amount}]
+  items           String // JSON
   totalAmount     Decimal
-  status          String   @default("Pending") // Pending, Accepted, Rejected, Converted
-  notes           String?
-  validUntil      DateTime?
+  currency        String @default("USD")
+  paymentStatus   String @default("Paid")
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+}
+
+// =======================
+// HR MODULE
+// =======================
+
+model Employee {
+  id          String   @id @default(uuid())
+  firstName   String
+  lastName    String
+  email       String   @unique
+  phone       String?
+  position    String
+  department  String?
+  salary      Decimal
+  currency    String   @default("USD")
+  checkIns    Attendance[]
+  leaves      LeaveRequest[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Attendance {
+  id          String   @id @default(uuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  checkIn     DateTime
+  checkOut    DateTime?
+  date        DateTime @default(now())
+}
+
+model LeaveRequest {
+  id          String   @id @default(uuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  type        String   // Annual, Sick, Unpaid
+  startDate   DateTime
+  endDate     DateTime
+  status      String   @default("Pending")
+  reason      String?
+  createdAt   DateTime @default(now())
+}
+
+// =======================
+// PROJECTS MODULE
+// =======================
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  status      String   @default("Active")
+  startDate   DateTime
+  endDate     DateTime?
+  tasks       Task[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  status      String   @default("ToDo") // ToDo, InProgress, Done
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  assignedTo  String?  // Employee Name or ID
+  deadline    DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

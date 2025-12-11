@@ -7,8 +7,7 @@ import { AddQuoteModal } from '@/components/AddQuoteModal';
 import { ConvertToJobModal } from '@/components/ConvertToJobModal';
 import { deleteQuote } from '@/actions/quotes';
 import { exportToExcel } from '@/lib/export';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { generateDocumentPDF, DocumentData, DocumentItem } from '@/lib/pdfGenerator';
 
 interface QuotesTableProps {
   initialQuotes: any[];
@@ -20,9 +19,18 @@ export default function QuotesTable({ initialQuotes }: QuotesTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedQuote, setExpandedQuote] = useState<string | null>(null);
 
-  const quotes = initialQuotes.filter(quote => 
+  const getFirstItemDescription = (quote: any) => {
+    try {
+      const items = JSON.parse(quote.items);
+      return items[0]?.description || '';
+    } catch {
+      return '';
+    }
+  };
+
+  const quotes = initialQuotes.filter(quote =>
     quote.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    quote.jobDescription.toLowerCase().includes(searchTerm.toLowerCase())
+    getFirstItemDescription(quote).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleDelete = async (id: string) => {
@@ -35,71 +43,48 @@ export default function QuotesTable({ initialQuotes }: QuotesTableProps) {
     const data = quotes.map(quote => {
       const items = JSON.parse(quote.items || '[]');
       const itemsList = items.map((item: any) => `${item.description} (${item.quantity}x$${item.price})`).join('; ');
-      
+
       return {
         'Date': format(new Date(quote.date), 'dd/MM/yyyy'),
         'Customer': quote.customerName,
-        'Job Description': quote.jobDescription,
         'Items': itemsList,
         'Total Amount': `$${Number(quote.totalAmount).toFixed(2)}`,
         'Status': quote.status
       };
     });
-    
+
     exportToExcel(data, `Quotes_${new Date().toISOString().split('T')[0]}`);
   };
 
   const handleExportPDF = () => {
-    const doc = new jsPDF();
-    
-    doc.setFontSize(20);
-    doc.setTextColor(33, 115, 70);
-    doc.text('MOUNT+PLUS', 14, 20);
-    
-    doc.setFontSize(16);
-    doc.setTextColor(0, 0, 0);
-    doc.text('Quotations Report', 14, 30);
-    
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 37);
-    
-    const tableData = quotes.map(quote => {
-      const items = JSON.parse(quote.items || '[]');
-      const itemsText = items.map((item: any) => `${item.description} (${item.quantity})`).join(', ');
-      
-      return [
-        format(new Date(quote.date), 'dd/MM/yyyy'),
-        quote.customerName,
-        quote.jobDescription,
-        itemsText,
-        `$${Number(quote.totalAmount).toFixed(2)}`,
-        quote.status
-      ];
+    quotes.forEach((quote) => {
+      const items: DocumentItem[] = quote.items
+        ? JSON.parse(quote.items).map((item: any) => ({
+          description: item.description,
+          quantity: item.quantity,
+          price: Number(item.price),
+          total: Number(item.amount || item.price * item.quantity)
+        }))
+        : [];
+
+      const docData: DocumentData = {
+        id: quote.id.slice(0, 8).toUpperCase(), // Quotes might use ID as number
+        date: new Date(quote.date),
+        customerName: quote.customerName,
+        items: items,
+        total: Number(quote.totalAmount),
+        type: 'QUOTE'
+      };
+
+      generateDocumentPDF(docData);
     });
-    
-    autoTable(doc, {
-      startY: 45,
-      head: [['Date', 'Customer', 'Job', 'Items', 'Amount', 'Status']],
-      body: tableData,
-      theme: 'striped',
-      headStyles: { fillColor: [33, 115, 70] },
-      styles: { fontSize: 8 },
-      columnStyles: {
-        0: { cellWidth: 25 },
-        3: { cellWidth: 45 },
-        4: { cellWidth: 25, halign: 'right' }
-      }
-    });
-    
-    doc.save(`Quotes_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const handlePrint = (quote: any) => {
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-          const items = JSON.parse(quote.items || '[]');
-          const itemsHTML = items.map((item: any) => `
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      const items = JSON.parse(quote.items || '[]');
+      const itemsHTML = items.map((item: any) => `
             <tr>
               <td>${item.description}</td>
               <td style="text-align: center;">${item.quantity}</td>
@@ -107,8 +92,8 @@ export default function QuotesTable({ initialQuotes }: QuotesTableProps) {
               <td style="text-align: right;">$${Number(item.amount).toFixed(2)}</td>
             </tr>
           `).join('');
-          
-          printWindow.document.write(`
+
+      printWindow.document.write(`
             <html>
               <head>
                 <title>Quote - ${quote.customerName}</title>
@@ -155,7 +140,6 @@ export default function QuotesTable({ initialQuotes }: QuotesTableProps) {
                 <div class="client-box">
                   <div class="client-label">Quotation For</div>
                   <div class="client-name">${quote.customerName}</div>
-                  <div class="job-title">${quote.jobDescription}</div>
                 </div>
 
                 <table class="table">
@@ -192,8 +176,8 @@ export default function QuotesTable({ initialQuotes }: QuotesTableProps) {
               </body>
             </html>
           `);
-          printWindow.document.close();
-      }
+      printWindow.document.close();
+    }
   };
 
   return (
@@ -205,7 +189,7 @@ export default function QuotesTable({ initialQuotes }: QuotesTableProps) {
             <FileText className="w-6 h-6" />
             Quotations
           </h1>
-          
+
           <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
             <div className="relative flex-1 md:w-64">
               <input
@@ -217,7 +201,7 @@ export default function QuotesTable({ initialQuotes }: QuotesTableProps) {
               />
               <Search className="absolute left-2.5 top-2 w-4 h-4 text-gray-500" />
             </div>
-            
+
             <button
               onClick={handleExportExcel}
               className="bg-green-600 text-white px-3 py-1.5 text-xs font-bold uppercase rounded hover:bg-green-700 transition-colors flex items-center gap-1"
@@ -226,16 +210,16 @@ export default function QuotesTable({ initialQuotes }: QuotesTableProps) {
               <FileSpreadsheet className="w-4 h-4" />
               Excel
             </button>
-            
+
             <button
               onClick={handleExportPDF}
               className="bg-red-600 text-white px-3 py-1.5 text-xs font-bold uppercase rounded hover:bg-red-700 transition-colors flex items-center gap-1"
-              title="Export to PDF"
+              title="Generate PDF for all visible quotes"
             >
               <Download className="w-4 h-4" />
-              PDF
+              Generate PDFs
             </button>
-            
+
             <button
               onClick={() => setIsAddModalOpen(true)}
               className="bg-white text-blue-600 px-4 py-1.5 text-sm font-bold uppercase rounded hover:bg-gray-50 transition-colors shadow-sm flex items-center"
@@ -276,7 +260,14 @@ export default function QuotesTable({ initialQuotes }: QuotesTableProps) {
                     <td className="border border-gray-300 px-3 py-2">
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="font-semibold text-gray-900">{quote.jobDescription}</div>
+                          <div className="font-semibold text-gray-900">
+                            {(() => {
+                              try {
+                                const items = JSON.parse(quote.items || '[]');
+                                return items.length > 0 ? items[0].description : 'No items';
+                              } catch { return 'Invalid Items'; }
+                            })()}
+                          </div>
                           {(() => {
                             try {
                               const items = JSON.parse(quote.items || '[]');
@@ -296,7 +287,7 @@ export default function QuotesTable({ initialQuotes }: QuotesTableProps) {
                                 );
                               }
                               return items.length > 1 ? (
-                                <button 
+                                <button
                                   onClick={() => setExpandedQuote(quote.id)}
                                   className="mt-1 text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1"
                                 >
@@ -312,7 +303,7 @@ export default function QuotesTable({ initialQuotes }: QuotesTableProps) {
                           })()}
                         </div>
                         {expandedQuote === quote.id && (
-                          <button 
+                          <button
                             onClick={() => setExpandedQuote(null)}
                             className="text-xs text-gray-500 hover:text-gray-700 ml-2"
                           >
@@ -325,35 +316,34 @@ export default function QuotesTable({ initialQuotes }: QuotesTableProps) {
                       ${Number(quote.totalAmount).toFixed(2)}
                     </td>
                     <td className="border border-gray-300 px-3 py-2 text-center font-bold">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        quote.status === 'Converted' ? 'bg-green-100 text-green-800' :
+                      <span className={`px-2 py-1 rounded text-xs ${quote.status === 'Converted' ? 'bg-green-100 text-green-800' :
                         quote.status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
                         {quote.status.toUpperCase()}
                       </span>
                     </td>
                     <td className="border border-gray-300 px-2 py-1 text-center">
                       <div className="flex justify-center gap-2">
-                        <button 
-                            onClick={() => handlePrint(quote)} 
-                            className="text-gray-600 hover:text-gray-900 p-1"
-                            title="Print Quote"
+                        <button
+                          onClick={() => handlePrint(quote)}
+                          className="text-gray-600 hover:text-gray-900 p-1"
+                          title="Print Quote"
                         >
                           <Printer size={16} />
                         </button>
-                        
+
                         {quote.status !== 'Converted' && (
-                            <button 
-                                onClick={() => setConvertingQuote(quote)} 
-                                className="text-green-600 hover:text-green-800 p-1 flex items-center gap-1 font-bold text-xs uppercase"
-                                title="Convert to Job"
-                            >
+                          <button
+                            onClick={() => setConvertingQuote(quote)}
+                            className="text-green-600 hover:text-green-800 p-1 flex items-center gap-1 font-bold text-xs uppercase"
+                            title="Convert to Job"
+                          >
                             <ArrowRightCircle size={16} />
                             Job
-                            </button>
+                          </button>
                         )}
-                        
+
                         <button onClick={() => handleDelete(quote.id)} className="text-red-600 hover:text-red-800 p-1">
                           <Trash2 size={16} />
                         </button>
@@ -369,11 +359,11 @@ export default function QuotesTable({ initialQuotes }: QuotesTableProps) {
 
       {/* Add Modal */}
       <AddQuoteModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
-      
+
       {/* Convert to Job Modal */}
-      <ConvertToJobModal 
-        isOpen={!!convertingQuote} 
-        onClose={() => setConvertingQuote(null)} 
+      <ConvertToJobModal
+        isOpen={!!convertingQuote}
+        onClose={() => setConvertingQuote(null)}
         quote={convertingQuote}
       />
     </div>

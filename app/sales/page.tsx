@@ -12,9 +12,7 @@ export default async function SalesPage({ searchParams }: { searchParams: { acti
     ...sale,
     date: sale.date.toISOString(),
     createdAt: sale.createdAt.toISOString(),
-    updatedAt: sale.updatedAt.toISOString(),
-    price: sale.price.toNumber(),
-    amount: sale.amount.toNumber(),
+    totalAmount: sale.totalAmount.toNumber(),
   }));
 
   return <SalesTable initialSales={serializedSales as any} initialAction={searchParams.action} />;
